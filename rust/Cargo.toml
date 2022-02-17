@@ -6,19 +6,17 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m = { version = "0.7.3" }
+cortex-m = "0.7.4"
 cortex-m-rt = "0.7.1"
 embassy = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", branch = "master" }
 embassy-traits = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", branch = "master" }
-embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", branch = "master", features = ["stm32f446ze", "unstable-pac", "memory-x", "time-driver-tim2"]  }
-embedded-hal = "0.2.6"
+embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", branch = "master", features = ["nightly", "stm32f446ze", "unstable-pac", "memory-x", "time-driver-tim2", "exti"]  }
+embedded-hal = "0.2.7"
 arrayvec = { version = "0.7.2", default-features = false }
 
 [profile.release]
 debug = true
 lto = true
 codegen-units = 1
-# debug-assertions = false
 incremental = false
 opt-level = 3
-# overflow-checks = false

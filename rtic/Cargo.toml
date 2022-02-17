@@ -1,0 +1,24 @@
+[package]
+name = "f446-rtic-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cortex-m = "0.7.4"
+cortex-m-rt = "0.7.1"
+cortex-m-rtic = "1.0.0"
+embedded-hal = "0.2.6"
+rtic-monotonic = "1.0.0"
+fugit = "0.3.3"
+arrayvec = { version = "0.7.2", default-features = false }
+
+[dependencies.stm32f4xx-hal]
+git = "https://github.com/stm32-rs/stm32f4xx-hal"
+features = ["stm32f446", "rtic"]
+
+[profile.release]
+debug = true
+lto = true
+codegen-units = 1
+incremental = false
+opt-level = 3

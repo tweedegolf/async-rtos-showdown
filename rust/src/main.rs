@@ -5,21 +5,18 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use arrayvec::ArrayString;
-use embassy::blocking_mutex::kind::{Noop};
+use embassy::blocking_mutex::raw::NoopRawMutex;
 use embassy::channel::mpsc::{self, Channel, Receiver, Sender};
 use embassy::executor::Spawner;
 use embassy::time::{Duration, Timer};
 use embassy::util::Forever;
-use embassy_stm32::exti::ExtiInput;
 use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
 use embassy_stm32::peripherals::{DMA1_CH3, PB0, PC13, PG1, USART3};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::usart::{self, Uart};
 use embassy_stm32::Config;
 use embassy_stm32::Peripherals;
-use embassy_traits::gpio::{WaitForFallingEdge, WaitForRisingEdge};
-use embassy_traits::uart::Write;
-use embedded_hal::digital::v2::OutputPin;
+use embassy_stm32::exti::ExtiInput;
 
 fn config() -> Config {
     let mut config = Config::default();
@@ -38,7 +35,7 @@ fn config() -> Config {
 #[embassy::main(config = "config()")]
 async fn main(spawner: Spawner, p: Peripherals) -> ! {
     static BUTTON_PRESSED: AtomicBool = AtomicBool::new(false);
-    static UART_QUEUE: Forever<Channel<Noop, ArrayString<32>, 8>> = Forever::new();
+    static UART_QUEUE: Forever<Channel<NoopRawMutex, ArrayString<32>, 8>> = Forever::new();
 
     let led1 = Output::new(p.PB0, Level::Low, Speed::VeryHigh);
     let button = Input::new(p.PC13, Pull::None);
@@ -73,7 +70,9 @@ async fn main(spawner: Spawner, p: Peripherals) -> ! {
 
 
     // Main is done, run this future that never finishes
-    let () = core::future::pending().await;
+    loop {
+        let () = core::future::pending().await;
+    }
 }
 
 #[embassy::task]
@@ -81,10 +80,10 @@ async fn blink_led(mut led: Output<'static, PB0>, button_high: &'static AtomicBo
     loop {
         Timer::after(Duration::from_millis(100)).await;
         if !button_high.load(Ordering::SeqCst) {
-            led.set_high().unwrap();
+            led.set_high();
         }
         Timer::after(Duration::from_millis(100)).await;
-        led.set_low().unwrap();
+        led.set_low();
     }
 }
 
@@ -92,7 +91,7 @@ async fn blink_led(mut led: Output<'static, PB0>, button_high: &'static AtomicBo
 async fn button_waiter(
     mut button: ExtiInput<'static, PC13>,
     button_pressed: &'static AtomicBool,
-    sender: Sender<'static, Noop, ArrayString<32>, 8>,
+    sender: Sender<'static, NoopRawMutex, ArrayString<32>, 8>,
     mut button_processed: Output<'static, PG1>,
 ) {
     let mut trigger_count = 0;
@@ -112,9 +111,9 @@ async fn button_waiter(
     }
 
     loop {
-        button_processed.set_low().unwrap();
+        button_processed.set_low();
         button.wait_for_rising_edge().await;
-        button_processed.set_high().unwrap();
+        button_processed.set_high();
 
         trigger_count += 1;
         button_pressed.store(true, Ordering::SeqCst);
@@ -122,9 +121,9 @@ async fn button_waiter(
             panic!("SendError");
         }
 
-        button_processed.set_low().unwrap();
+        button_processed.set_low();
         button.wait_for_falling_edge().await;
-        button_processed.set_high().unwrap();
+        button_processed.set_high();
 
         trigger_count += 1;
         button_pressed.store(false, Ordering::SeqCst);
@@ -137,7 +136,7 @@ async fn button_waiter(
 #[embassy::task]
 async fn uart_writer(
     mut usart: Uart<'static, USART3, DMA1_CH3>,
-    mut receiver: Receiver<'static, Noop, ArrayString<32>, 8>,
+    mut receiver: Receiver<'static, NoopRawMutex, ArrayString<32>, 8>,
 ) {
     loop {
         let message = receiver.recv().await.unwrap();
